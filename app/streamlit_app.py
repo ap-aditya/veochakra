@@ -20,7 +20,28 @@ from inference.cache_io import read_cache, write_cache, cache_path_for
 from inference.events import EventConfig, EventState, update_events, finalize_report
 from inference.draw import draw_overlays
 
-st.set_page_config(page_title="AI Surveillance Anomaly Dashboard", layout="wide")
+st.set_page_config(
+    page_title="🎯 VeoChakra", 
+    layout="wide",
+    initial_sidebar_state="expanded",
+    menu_items={
+        'Get Help': 'https://github.com/veochakra/anomaly-dashboard',
+        'Report a bug': "https://github.com/veochakra/anomaly-dashboard/issues",
+        'About': "# AI Surveillance Anomaly Detection\nPowered by YOLOv8 + DeepSORT + LightGBM"
+    }
+)
+
+# Enhanced header
+st.markdown("""
+<div style="background: linear-gradient(90deg, #667eea 0%, #764ba2 100%); padding: 1.5rem; border-radius: 10px; margin-bottom: 2rem;">
+    <h1 style="color: white; margin: 0; text-align: center; font-size: 2.5rem;">
+        🎯 VeoChakra - AI Surveillance Anomaly Detection
+    </h1>
+    <p style="color: white; margin: 0; text-align: center; opacity: 0.9; font-size: 1.1rem;">
+        Real-time video analysis with YOLOv8 + DeepSORT + LightGBM
+    </p>
+</div>
+""", unsafe_allow_html=True)
 
 def auto_cleanup_old_files():
     try:
@@ -365,100 +386,130 @@ def display_results_and_downloads(config):
         
         zip_buffer.seek(0)
         
-        st.download_button(
-            label="� Download Complete Analysis Report",
-            data=zip_buffer.read(),
-            file_name=f"anomaly_analysis_report_{st.session_state.run_dir.name}.zip",
-            mime="application/zip",
-            help="Download all analysis data, settings, and screenshots in one ZIP file"
-        )
+        if 'download_ready' not in st.session_state:
+            st.session_state.download_ready = False
+        
+        if st.button("📦 Prepare Download", type="primary", use_container_width=True):
+            st.session_state.download_ready = True
+            st.success("✅ Report prepared for download!")
+        
+        if st.session_state.download_ready:
+            st.download_button(
+                label="📥 Download Complete Analysis Report",
+                data=zip_buffer.read(),
+                file_name=f"anomaly_analysis_report_{st.session_state.run_dir.name}.zip",
+                mime="application/zip",
+                help="Download all analysis data, settings, and screenshots in one ZIP file",
+                key=f"download_main_{st.session_state.run_dir.name}",
+                use_container_width=True,
+                type="secondary"
+            )
     else:
         st.info("No report files available for download.")
 
 def main():
     config = setup_sidebar()
     initialize_session_state(config['mode'], config['auto_cleanup'])
+    tab1, tab2 = st.tabs(["🎥 Live Analysis", "📊 Results & Download"])
     
-    col_left, col_right = st.columns(2)
-    video_placeholder = col_left.empty()
-    chart_placeholder = col_right.empty()
-    events_placeholder = col_right.empty()
-    status_placeholder = st.empty()
+    with tab1:
+        col_left, col_right = st.columns([3, 2])
+        
+        with col_left:
+            st.subheader("📹 Video Processing")
+            video_placeholder = st.empty()
+        
+        with col_right:
+            st.subheader("📈 Real-time Analytics")
+            chart_placeholder = st.empty()
+            events_placeholder = st.empty()
+        
+        status_placeholder = st.empty()
+        handle_buttons(config)
     
-    handle_buttons(config)
-    handle_cleanup_buttons(config['clear_cache_btn'], config['clear_uploads_btn'], config['clear_reports_btn'])
+    with tab2:
+        if hasattr(st.session_state, 'run_dir') and st.session_state.run_dir:
+            display_results_and_downloads(config)
+        else:
+            st.info("🎬 Run video analysis first to see results here")
+        st.markdown("---")
+        st.subheader("🧹 Cleanup Tools")
+        handle_cleanup_buttons(config['clear_cache_btn'], config['clear_uploads_btn'], config['clear_reports_btn'])
     
     if st.session_state.running:
-        vp = st.session_state.video_path
-        if vp is None:
-            st.stop()
+        with tab1:
+            vp = st.session_state.video_path
+            if vp is None:
+                st.stop()
 
-        cap = cv2.VideoCapture(str(vp))
-        if not cap.isOpened():
-            st.error("Failed to open the uploaded video.")
-            st.session_state.running = False
-        else:
-            fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
-            w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-            h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-            config['scorer'].start_stream(fps=fps, w=w, h=h)
+            cap = cv2.VideoCapture(str(vp))
+            if not cap.isOpened():
+                st.error("Failed to open the uploaded video.")
+                st.session_state.running = False
+            else:
+                fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+                w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+                h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                config['scorer'].start_stream(fps=fps, w=w, h=h)
 
-            cached = None
-            cache_path = cache_path_for(vp)
-            if st.session_state.use_cache:
-                cached = read_cache(vp)
+                cached = None
+                cache_path = cache_path_for(vp)
+                if st.session_state.use_cache:
+                    cached = read_cache(vp)
 
-            per_frame_dets_to_write = []
-            smoothed_deque = deque(maxlen=max(3, int(config['smooth_k'])))
-            smoothed_scores = []
+                per_frame_dets_to_write = []
+                smoothed_deque = deque(maxlen=max(3, int(config['smooth_k'])))
+                smoothed_scores = []
 
-            cfg = EventConfig(threshold=float(config['threshold']), save_screenshots=bool(config['save_screens']))
+                cfg = EventConfig(threshold=float(config['threshold']), save_screenshots=bool(config['save_screens']))
 
-            frame_idx = 0
-            last_time = time.time()
-            interval = 1.0 / float(config['fps_cap'])
-            placeholder_clear_counter = 0
-
-            while st.session_state.running:
-                ret, frame = cap.read()
-                if not ret:
-                    break
-
-                cached_dets = None
-                if cached is not None and frame_idx < len(cached):
-                    cached_dets = cached[frame_idx]
-
-                tracked, smoothed, placeholder_clear_counter = process_video_frame(
-                    frame, frame_idx, config['scorer'], cached_dets, config, 
-                    smoothed_deque, cfg, per_frame_dets_to_write, cached, placeholder_clear_counter
-                )
-
-                smoothed_scores.append(smoothed)
-                display_frame(frame, tracked, frame_idx, config, placeholder_clear_counter, video_placeholder)
-                draw_score_chart(smoothed_scores, float(config['threshold']), chart_placeholder)
-                render_events_list(st.session_state.events_state.events, events_placeholder)
-
-                now = time.time()
-                dt = now - last_time
-                if dt < interval:
-                    time.sleep(interval - dt)
+                frame_idx = 0
                 last_time = time.time()
+                interval = 1.0 / float(config['fps_cap'])
+                placeholder_clear_counter = 0
 
-                frame_idx += 1
+                while st.session_state.running:
+                    ret, frame = cap.read()
+                    if not ret:
+                        break
 
-            cap.release()
-            st.session_state.running = False
+                    cached_dets = None
+                    if cached is not None and frame_idx < len(cached):
+                        cached_dets = cached[frame_idx]
 
-            if cached is None and per_frame_dets_to_write:
-                write_cache(vp, per_frame_dets_to_write)
-                status_placeholder.info(f"Detections cached to {cache_path.resolve()}")
+                    tracked, smoothed, placeholder_clear_counter = process_video_frame(
+                        frame, frame_idx, config['scorer'], cached_dets, config, 
+                        smoothed_deque, cfg, per_frame_dets_to_write, cached, placeholder_clear_counter
+                    )
 
-            generate_final_report(config)
+                    smoothed_scores.append(smoothed)
+                    display_frame(frame, tracked, frame_idx, config, placeholder_clear_counter, video_placeholder)
+                    draw_score_chart(smoothed_scores, float(config['threshold']), chart_placeholder)
+                    render_events_list(st.session_state.events_state.events, events_placeholder)
 
-    else:
-        st.markdown("### Upload a video and click Start to process.")
-        if config['artifacts_dir'] and (config['artifacts_dir'] / "meta.json").exists():
-            st.caption("Artifacts loaded. Default threshold applied. Use Replay mode for instant demos if caches exist.")
+                    now = time.time()
+                    dt = now - last_time
+                    if dt < interval:
+                        time.sleep(interval - dt)
+                    last_time = time.time()
+
+                    frame_idx += 1
+
+                cap.release()
+                st.session_state.running = False
+
+                if cached is None and per_frame_dets_to_write:
+                    write_cache(vp, per_frame_dets_to_write)
+                    status_placeholder.info(f"Detections cached to {cache_path.resolve()}")
+
+                generate_final_report(config)
+    
+    if not st.session_state.running:
+        with tab1:
+            st.markdown("### 🎬 Upload a video and click Start to begin processing")
+            if config['artifacts_dir'] and (config['artifacts_dir'] / "meta.json").exists():
+                st.success("✅ Artifacts loaded. Default threshold applied.")
+                st.info("💡 Use Replay mode for instant demos if detection caches exist.")
 
 if __name__ == "__main__":
     main()
