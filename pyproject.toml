@@ -1,0 +1,21 @@
+[project]
+name = "hackon1honeywell"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "deep-sort-realtime>=1.3.2",
+    "joblib>=1.5.1",
+    "lightgbm>=4.6.0",
+    "opencv-python>=4.12.0.88",
+    "pandas>=2.3.2",
+    "pillow>=11.3.0",
+    "plotly>=6.3.0",
+    "pydantic>=2.11.7",
+    "rich>=14.1.0",
+    "scikit-learn>=1.2.2",
+    "scipy>=1.16.1",
+    "streamlit>=1.48.1",
+    "ultralytics>=8.3.184",
+]

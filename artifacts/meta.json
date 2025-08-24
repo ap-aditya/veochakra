@@ -1,0 +1,62 @@
+{
+  "threshold": 0.9199999999999999,
+  "feature_order": [
+    "num_people",
+    "num_objects",
+    "avg_speed_px",
+    "max_speed_px",
+    "avg_accel_px",
+    "fast_ratio",
+    "loiter_ratio",
+    "stationary_ratio",
+    "min_person_obj_px",
+    "min_inter_person_px",
+    "avg_inter_person_px",
+    "min_person_obj_norm",
+    "min_inter_person_norm",
+    "avg_inter_person_norm",
+    "mean_track_age",
+    "median_track_age",
+    "max_track_age",
+    "person_conf_mean",
+    "person_conf_max",
+    "object_conf_mean",
+    "object_conf_max",
+    "grid_mean",
+    "grid_max",
+    "grid_std"
+  ],
+  "val_videos": [
+    "02.avi",
+    "04.avi",
+    "06.avi",
+    "08.avi",
+    "10.avi",
+    "12.avi",
+    "14.avi",
+    "16.avi",
+    "18.avi",
+    "20.avi"
+  ],
+  "holdout_videos": [
+    "01.avi",
+    "03.avi",
+    "05.avi",
+    "07.avi",
+    "09.avi",
+    "11.avi",
+    "13.avi",
+    "15.avi",
+    "17.avi",
+    "19.avi",
+    "21.avi"
+  ],
+  "best_iteration": 111,
+  "negative_ratio": 10.0,
+  "final_holdout": {
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1": 0.0,
+    "auc": 0.8369112261649199
+  }
+}
