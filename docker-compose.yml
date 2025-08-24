@@ -1,0 +1,12 @@
+services:
+  anomaly-dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: VeoChakra
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./data:/app/data
+      - ./artifacts:/app/artifacts
+    restart: unless-stopped

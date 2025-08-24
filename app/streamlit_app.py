@@ -25,8 +25,8 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
     menu_items={
-        'Get Help': 'https://github.com/veochakra/anomaly-dashboard',
-        'Report a bug': "https://github.com/veochakra/anomaly-dashboard/issues",
+        'Get Help': 'https://github.com/ap-aditya/veochakra',
+        'Report a bug': "https://github.com/ap-aditya/veochakra/issues",
         'About': "# AI Surveillance Anomaly Detection\nPowered by YOLOv8 + DeepSORT + LightGBM"
     }
 )
@@ -158,8 +158,8 @@ def setup_sidebar():
     
     mode = st.sidebar.selectbox("Mode", ["Replay (use cached detections)", "Live detection (compute now)"])
     threshold = st.sidebar.slider("Threshold", 0.00, 1.00, float(threshold_default), 0.01)
-    smooth_k = st.sidebar.slider("Smoothing window (frames)", 1, 21, 9, 2)
-    fps_cap = st.sidebar.slider("Processing FPS cap", 4, 20, 12, 1)
+    smooth_k = st.sidebar.slider("Smoothing window (frames)", 1, 21, 5, 2)
+    fps_cap = st.sidebar.slider("Processing FPS cap", 4, 20, 8, 1)
     draw_ids = st.sidebar.checkbox("Draw IDs", True, help="Overlay track IDs with bounding boxes")
     save_screens = st.sidebar.checkbox("Save screenshots on events", True)
     zip_screens = st.sidebar.checkbox("Zip screenshots in report", True)
